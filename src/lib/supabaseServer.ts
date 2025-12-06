@@ -9,15 +9,11 @@ export async function createSupabaseServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
+        // 🔹 READ-ONLY: allowed in Server Components
         get(name: string) {
           return cookieStore.get(name)?.value
         },
-        set(name: string, value: string, options: any) {
-          cookieStore.set(name, value, options)
-        },
-        remove(name: string, options: any) {
-          cookieStore.set(name, '', { ...options, maxAge: 0 })
-        },
+        // no set/remove here – those are only allowed in Server Actions / Route Handlers
       },
     }
   )
