@@ -46,7 +46,6 @@ export function SubmitFeedbackDialog() {
   const [category, setCategory] = useState<string | undefined>()
   const [priority, setPriority] = useState<string | undefined>('low')
   const [anonymous, setAnonymous] = useState(false)
-  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -75,16 +74,33 @@ export function SubmitFeedbackDialog() {
       return
     }
 
+    // derive display name from auth metadata or email
+    const fromMetadata =
+      (user.user_metadata &&
+        (user.user_metadata.full_name || user.user_metadata.name)) ||
+      null
+    const fromEmail = user.email ? user.email.split('@')[0] : null
+    const displayName = fromMetadata || fromEmail
+
+    const profilePayload: any = {
+      id: user.id,
+      email: user.email,
+    }
+    if (displayName) {
+      profilePayload.display_name = displayName
+    }
+
     const { error: profileError } = await supabase.from('profiles').upsert(
-      {
-        id: user.id,
-        email: user.email,
-      },
+      profilePayload,
       { onConflict: 'id' }
     )
 
     if (profileError) {
-      console.error('Profile upsert error:', profileError.message, profileError.details)
+      console.error(
+        'Profile upsert error:',
+        profileError.message,
+        profileError.details
+      )
       setSubmitting(false)
       setError('Could not create profile. Please try again.')
       return
@@ -97,7 +113,8 @@ export function SubmitFeedbackDialog() {
       category,
       priority,
       is_anonymous: anonymous,
-      contact_email: email || null,
+      // don’t store contact email when anonymous
+      contact_email: anonymous ? null : email || null,
     })
 
     setSubmitting(false)
@@ -114,14 +131,13 @@ export function SubmitFeedbackDialog() {
     setCategory(undefined)
     setPriority('low')
     setAnonymous(false)
-    setName('')
     setEmail('')
     setOpen(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {/* Trigger: round + icon (you can style it however you want) */}
+      {/* Trigger: round + icon */}
       <DialogTrigger asChild>
         <button
           className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow hover:opacity-90 transition"
@@ -205,26 +221,15 @@ export function SubmitFeedbackDialog() {
             <span className="text-sm">anonymous</span>
           </div>
 
-          {/* Name + Email */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Your Name</label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={anonymous}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Email (Optional)</label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={anonymous}
-              />
-            </div>
+          {/* Email only (no manual name) */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Email (Optional)</label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={anonymous}
+            />
           </div>
 
           {error && (

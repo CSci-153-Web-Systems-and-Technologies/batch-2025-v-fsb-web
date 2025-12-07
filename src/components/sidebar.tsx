@@ -5,7 +5,16 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LogoutButton } from '@/components/logout-button'
 import { Home, BarChart3 } from 'lucide-react'
-import { SubmitFeedbackDialog } from '@/components/submit-feedback-dialog'
+import dynamic from 'next/dynamic'
+
+const SubmitFeedbackDialog = dynamic(
+  () =>
+    import('@/components/submit-feedback-dialog').then(
+      (m) => m.SubmitFeedbackDialog
+    ),
+  { ssr: false }
+)
+
 
 // Only real pages here
 const navItems = [
