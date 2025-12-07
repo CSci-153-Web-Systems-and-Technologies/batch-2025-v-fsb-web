@@ -4,8 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LogoutButton } from '@/components/logout-button'
-import { Home, BarChart3 } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import { Home, BarChart3, Settings } from 'lucide-react'
 
 const SubmitFeedbackDialog = dynamic(
   () =>
@@ -15,8 +15,6 @@ const SubmitFeedbackDialog = dynamic(
   { ssr: false }
 )
 
-
-// Only real pages here
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -40,10 +38,10 @@ export function Sidebar() {
       onMouseLeave={() => setExpanded(false)}
     >
       {/* Top section */}
-      <div className="space-y-6 px-2 pt-4">
+      <div className="px-2 pt-4">
         {/* Logo / title */}
-        <div className="flex items-center gap-2 px-2">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold">
+        <div className="mb-4 flex items-center gap-2 px-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold">
             V
           </div>
           {expanded && (
@@ -53,8 +51,9 @@ export function Sidebar() {
           )}
         </div>
 
-        {/* Nav links */}
-        <nav className="flex flex-col gap-1 mt-4">
+        {/* Nav list: Home, Dashboard, Submit, Settings */}
+        <nav className="flex flex-col gap-1">
+          {/* Home + Dashboard */}
           {navItems.map(({ href, label, icon: Icon }) => {
             const active = pathname === href
             return (
@@ -77,17 +76,35 @@ export function Sidebar() {
               </Link>
             )
           })}
-        </nav>
 
-        {/* Submit Feedback button (opens dialog) */}
-        <div className="mt-4 flex items-center gap-3 px-2">
-          <SubmitFeedbackDialog />
-          {expanded && (
-            <span className="text-sm text-muted-foreground">
-              Submit Feedback
-            </span>
-          )}
-        </div>
+          {/* Submit Feedback: ONLY the icon has hover */}
+          <div className="flex items-center gap-3 px-2 py-2">
+            <SubmitFeedbackDialog />
+            {expanded && (
+              <span className="text-sm text-muted-foreground">
+                Submit Feedback
+              </span>
+            )}
+          </div>
+
+          {/* Account Settings (normal row hover) */}
+          <Link
+            href="/settings"
+            className={`
+              flex items-center gap-3 rounded-md px-2 py-2 text-sm
+              transition-colors
+              ${
+                pathname === '/settings'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              }
+            `}
+            title={!expanded ? 'Account settings' : undefined}
+          >
+            <Settings className="h-5 w-5 shrink-0" />
+            {expanded && <span className="truncate">Account settings</span>}
+          </Link>
+        </nav>
       </div>
 
       {/* Bottom section */}
