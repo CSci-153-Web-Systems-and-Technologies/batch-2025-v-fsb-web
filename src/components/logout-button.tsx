@@ -1,8 +1,10 @@
+// src/components/logout-button.tsx
 'use client'
 
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
+import { LogOut } from 'lucide-react'
 
 export function LogoutButton() {
   const supabase = createSupabaseBrowserClient()
@@ -14,8 +16,13 @@ export function LogoutButton() {
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={handleLogout}>
-      Logout
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={handleLogout}
+      aria-label="Logout"
+    >
+      <LogOut className="h-5 w-5" />
     </Button>
   )
 }

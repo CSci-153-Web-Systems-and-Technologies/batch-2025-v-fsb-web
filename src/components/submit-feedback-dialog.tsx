@@ -143,7 +143,7 @@ export function SubmitFeedbackDialog() {
           className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow hover:opacity-90 transition"
           aria-label="Submit feedback"
         >
-          <PlusCircle className="h-6 w-6" />
+          <PlusCircle className="h-5 w-5" />
         </button>
       </DialogTrigger>
 
