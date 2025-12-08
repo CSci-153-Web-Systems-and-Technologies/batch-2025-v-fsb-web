@@ -6,8 +6,7 @@ export default async function DashboardPage() {
 
   const { data, error } = await supabase
   .from('feedback')
-  .select(
-    `
+  .select(`
     id,
     title,
     description,
@@ -16,15 +15,11 @@ export default async function DashboardPage() {
     status,
     is_anonymous,
     created_at,
-    response_text,
-    response_visible_public,
-    responded_at,
-    profiles:profiles (
+    profiles:profiles!feedback_user_id_fkey (
       display_name,
       email
     )
-  `
-  )
+  `)
   .order('created_at', { ascending: false })
 
 
