@@ -20,6 +20,30 @@ const PRIORITY_BADGE_CLASS: Record<string, string> = {
   critical: 'bg-[#E74C3C] text-white',
 }
 
+// Hex color maps exported for charts and other non-Tailwind usages
+export const CATEGORY_HEX: Record<string, string> = {
+  academics: '#3498DB',
+  facilities: '#2ECC71',
+  infirmary: '#E74C3C',
+  cafeteria: '#F39C12',
+  library: '#9B59B6',
+  dormitory: '#1ABC9C',
+  events: '#E91E63',
+  transportation: '#34495E',
+  technology: '#607D8B',
+  administration: '#795548',
+  safety: '#C0392B',
+  other: '#95A5A6',
+  faculty: '#2ECC71',
+}
+
+export const PRIORITY_HEX: Record<string, string> = {
+  low: '#1AAE5C',
+  medium: '#FFFF5C',
+  high: '#E78C3C',
+  critical: '#E74C3C',
+}
+
 export function categoryBadgeClass(category: string) {
   return CATEGORY_BADGE_CLASS[category.toLowerCase()] ?? 'bg-slate-500 text-white'
 }

@@ -32,6 +32,8 @@ import { Switch } from '@/components/ui/switch'
 import { Search, Filter, Play, X, Check, MessageSquare } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient'
 import { categoryBadgeClass, priorityBadgeClass } from '@/lib/feedback-badges'
+import { AdminAnalytics } from '@/components/admin-analytics'
+import { useEffect } from 'react'
 
 type FeedbackStatus = 'pending' | 'in_progress' | 'published' | 'rejected'
 
@@ -309,14 +311,9 @@ ${responseText}
 
         {/* Analytics tab placeholder */}
         <TabsContent value="analytics" className="mt-4">
-          <Card className="rounded-3xl">
-            <CardContent className="py-6">
-              <p className="text-sm text-muted-foreground">
-                Analytics charts coming soon.
-              </p>
-            </CardContent>
-          </Card>
+          <AdminAnalytics feedback={rows} />
         </TabsContent>
+
 
         {(['pending', 'in_progress', 'published', 'rejected', 'all'] as const).map(
           (tab) => (
