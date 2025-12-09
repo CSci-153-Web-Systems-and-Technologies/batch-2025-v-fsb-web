@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import Image from 'next/image'
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -21,7 +23,7 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
@@ -33,27 +35,32 @@ export default function LoginPage() {
       return
     }
 
-    // success → go to dashboard/home
     router.push('/')
   }
 
   async function handleGoogleLogin() {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${window.location.origin}/callback`,
-    },
-  })
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
 
-  if (error) setError(error.message)
-}
-
-
+    if (error) setError(error.message)
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-full max-w-md space-y-6 border rounded-xl p-6 shadow-sm">
-        <div className="space-y-1 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-muted">
+      <div className="w-full max-w-md space-y-6 border rounded-3xl p-8 shadow-sm bg-background">
+        {/* Logo + title */}
+        <div className="space-y-2 text-center flex flex-col items-center">
+          <Image
+            src="/v-fsb_icon.svg"
+            alt="V-FSB logo"
+            width={56}
+            height={56}
+            priority
+          />
           <h1 className="text-2xl font-semibold">Welcome to V-FSB</h1>
           <p className="text-sm text-muted-foreground">
             Viscan Feedback &amp; Suggestion Box
@@ -96,6 +103,7 @@ export default function LoginPage() {
           </Button>
         </form>
 
+        {/* Divider */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t" />
@@ -107,14 +115,33 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {/* Google button with icon */}
         <Button
           type="button"
           variant="outline"
-          className="w-full"
+          className="w-full flex items-center justify-center gap-2"
           onClick={handleGoogleLogin}
         >
-          Google account
+          <Image
+            src="/google-icon.svg"
+            alt="Google logo"
+            width={18}
+            height={18}
+            className="h-4 w-4"
+          />
+          <span>Google account</span>
         </Button>
+
+        {/* No account? Sign up */}
+        <p className="mt-2 text-xs text-center text-muted-foreground">
+          Don&apos;t have an account?{' '}
+          <Link
+            href="/signup"
+            className="font-medium text-primary hover:underline"
+          >
+            Sign up
+          </Link>
+        </p>
       </div>
     </div>
   )

@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import Image from 'next/image'
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -15,6 +17,17 @@ export default function SignupPage() {
 
   const router = useRouter()
   const supabase = createSupabaseBrowserClient()
+
+  async function handleGoogleLogin() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+
+    if (error) setError(error.message)
+  }
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
@@ -38,9 +51,22 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-full max-w-md space-y-6 border rounded-xl p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-center">Create an account</h1>
+    <div className="min-h-screen flex items-center justify-center bg-muted">
+      <div className="w-full max-w-md space-y-6 border rounded-3xl p-8 shadow-sm bg-background">
+        {/* Logo + title */}
+        <div className="space-y-2 text-center flex flex-col items-center">
+          <Image
+            src="/v-fsb_icon.svg"
+            alt="V-FSB logo"
+            width={100}
+            height={100}
+            priority
+          />
+          <h1 className="text-2xl font-semibold">Welcome to V-FSB</h1>
+          <p className="text-sm text-muted-foreground">
+            Viscan Feedback &amp; Suggestion Box
+          </p>
+        </div>
 
         <form onSubmit={handleSignup} className="space-y-4">
           <div className="space-y-2">
@@ -73,6 +99,12 @@ export default function SignupPage() {
             {loading ? 'Creating account…' : 'Sign up'}
           </Button>
         </form>
+        <p className="mt-2 text-xs text-center text-muted-foreground">
+          Already have an account?{' '}
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            Login.
+          </Link>
+        </p>
       </div>
     </div>
   )
