@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { ThumbsUp, ThumbsDown, MessageCircle } from 'lucide-react'
+import { categoryBadgeClass, priorityBadgeClass } from '@/lib/feedback-badges'
+
 
 export type PublicFeedbackRow = {
   id: string
@@ -369,9 +371,15 @@ export function PublicFeed({ initialFeedback }: Props) {
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold">{item.title}</p>
-                    <Badge className="rounded-full bg-[#F35A4A] px-3 py-1 text-[11px] font-medium text-white">
-                      {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+                    <Badge
+                        className={
+                            'rounded-full px-3 py-1 text-[11px] font-medium ' +
+                            categoryBadgeClass(item.category)
+                        }
+                        >
+                        {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
                     </Badge>
+
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-muted-foreground">
