@@ -1,5 +1,6 @@
+// src/lib/supabaseServer.ts
 import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies()
@@ -9,11 +10,22 @@ export async function createSupabaseServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        // 🔹 READ-ONLY: allowed in Server Components
-        get(name: string) {
-          return cookieStore.get(name)?.value
+        // called by Supabase to read cookies
+        getAll() {
+          return cookieStore.getAll()
         },
-        // no set/remove here – those are only allowed in Server Actions / Route Handlers
+        // called by Supabase to write/refresh cookies
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options)
+            })
+          } catch {
+            // In Server Components, cookies are read-only.
+            // It's okay to ignore setAll here as long as you
+            // refresh sessions via middleware or route handlers.
+          }
+        },
       },
     }
   )
