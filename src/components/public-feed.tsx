@@ -346,8 +346,8 @@ export function PublicFeed({ initialFeedback }: Props) {
 
   return (
     <>
-      <div className="space-y-3">
-        {feedback.map((item) => {
+      <div className="space-y-2">
+        {feedback.map((item, idx) => {
           const reactionState =
             reactions[item.id] ??
             ({ likes: 0, dislikes: 0, userReaction: null } as ReactionState)
@@ -360,27 +360,30 @@ export function PublicFeed({ initialFeedback }: Props) {
               key={item.id}
               className="rounded-[24px] border border-neutral-200"
             >
-              <CardContent className="py-4 px-5 space-y-3">
-                {/* Top row: name + label, date underneath */}
+              <CardContent
+                className={
+                  idx === 0 ? 'py-2 px-5 space-y-2' : 'py-3 px-5 space-y-2'
+                }
+              >
+                {/* Top row: title + category, name + date underneath */}
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold">
+                    <p className="text-sm font-semibold">{item.title}</p>
+                    <Badge className="rounded-full bg-[#F35A4A] px-3 py-1 text-[11px] font-medium text-white">
+                      {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground">
                       {item.is_anonymous
                         ? 'Anonymous'
                         : item.profiles?.display_name || 'Unknown'}
                     </span>
-                    <Badge className="rounded-full bg-[#F35A4A] px-3 py-1 text-[11px] font-medium text-white">
-                      {item.category.charAt(0).toUpperCase() +
-                        item.category.slice(1)}
-                    </Badge>
+                    <span className="text-[11px] text-muted-foreground">
+                      · {formatDate(item.created_at)}
+                    </span>
                   </div>
-                  <span className="text-[11px] text-muted-foreground">
-                    {formatDate(item.created_at)}
-                  </span>
                 </div>
-
-                {/* Title */}
-                <p className="text-sm font-semibold">{item.title}</p>
 
                 {/* Description */}
                 <p className="text-sm text-muted-foreground">
@@ -402,56 +405,63 @@ export function PublicFeed({ initialFeedback }: Props) {
                   </div>
                 )}
 
-                {/* Reactions row */}
+                {/* Reactions row (pill style: icon + count, and comments text) */}
                 <div className="mt-2 flex items-center gap-4">
-                  {/* Like */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleReaction(item.id, 'like')}
-                      className={`flex h-9 w-9 items-center justify-center rounded-full transition-all duration-150 ${
-                        likeActive
-                          ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                          : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 hover:text-emerald-800'
-                      }`}
-                    >
-                      <ThumbsUp className="h-4 w-4" />
-                    </button>
-                    <span className="min-w-[1ch] text-xs text-muted-foreground text-center">
+                  {/* Like pill */}
+                  <button
+                    type="button"
+                    onClick={() => handleReaction(item.id, 'like')}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-1 text-sm font-medium transition-all duration-150 shadow-sm ${
+                      likeActive
+                        ? 'bg-emerald-500 text-white border border-emerald-500 hover:bg-emerald-600'
+                        : 'bg-white text-emerald-700 border border-neutral-200 hover:bg-emerald-50'
+                    }`}
+                    aria-pressed={likeActive}
+                    aria-label={likeActive ? 'Unlike' : 'Like'}
+                  >
+                    <ThumbsUp className="h-4 w-4" />
+                    <span className="text-xs">
                       {reactionState.likes || ''}
                     </span>
-                  </div>
+                  </button>
 
-                  {/* Dislike */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleReaction(item.id, 'dislike')}
-                      className={`flex h-9 w-9 items-center justify-center rounded-full transition-all duration-150 ${
-                        dislikeActive
-                          ? 'bg-red-500 text-white hover:bg-red-600'
-                          : 'bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800'
-                      }`}
-                    >
-                      <ThumbsDown className="h-4 w-4" />
-                    </button>
-                    <span className="min-w-[1ch] text-xs text-muted-foreground text-center">
+                  {/* Dislike pill */}
+                  <button
+                    type="button"
+                    onClick={() => handleReaction(item.id, 'dislike')}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-1 text-sm font-medium transition-all duration-150 shadow-sm ${
+                      dislikeActive
+                        ? 'bg-red-500 text-white border border-red-500 hover:bg-red-600'
+                        : 'bg-white text-red-700 border border-neutral-200 hover:bg-red-50'
+                    }`}
+                    aria-pressed={dislikeActive}
+                    aria-label={dislikeActive ? 'Remove dislike' : 'Dislike'}
+                  >
+                    <ThumbsDown className="h-4 w-4" />
+                    <span className="text-xs">
                       {reactionState.dislikes || ''}
                     </span>
-                  </div>
+                  </button>
 
-                  {/* Comments */}
-                  <div className="flex items-center gap-1">
+                  {/* Comments: small icon box + text */}
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => openComments(item)}
-                      className="ml-1 flex h-9 w-9 items-center justify-center rounded-full border border-black text-black transition-all duration-150 hover:bg-slate-100 hover:scale-105 hover:border-neutral-300"
+                      className="flex h-7 w-7 items-center justify-center rounded-md border border-neutral-200 text-black transition-all duration-150 hover:bg-slate-100"
+                      aria-label="Open comments"
                     >
                       <MessageCircle className="h-4 w-4" />
                     </button>
-                    <span className="min-w-[1ch] text-xs text-muted-foreground text-center">
-                      {commentCounts[item.id] || ''}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => openComments(item)}
+                      className="text-xs text-muted-foreground"
+                    >
+                      {(commentCounts[item.id] || 0) > 0
+                        ? `${commentCounts[item.id]} comment${commentCounts[item.id] === 1 ? '' : 's'}`
+                        : '0 comments'}
+                    </button>
                   </div>
                 </div>
               </CardContent>
