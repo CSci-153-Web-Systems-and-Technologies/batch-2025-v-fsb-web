@@ -31,6 +31,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Search, Filter, Play, X, Check, MessageSquare } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient'
+import { categoryBadgeClass, priorityBadgeClass } from '@/lib/feedback-badges'
 
 type FeedbackStatus = 'pending' | 'in_progress' | 'published' | 'rejected'
 
@@ -401,13 +402,20 @@ ${responseText}
 
                           {/* Badges + name + date */}
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge className="bg-emerald-500/90 text-xs font-medium text-white">
-                              {item.category.charAt(0).toUpperCase() +
-                                item.category.slice(1)}
+                            <Badge
+                              className={
+                                'text-xs font-medium ' + categoryBadgeClass(item.category)
+                              }
+                            >
+                              {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
                             </Badge>
-                            <Badge className="bg-lime-500/90 text-xs font-medium text-white">
-                              {item.priority.charAt(0).toUpperCase() +
-                                item.priority.slice(1)}
+                            <Badge
+                              className={
+                                'text-xs font-medium rounded-full px-2 ' +
+                                priorityBadgeClass(item.priority)
+                              }
+                            >
+                              {item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}
                             </Badge>
                             <span className="text-xs text-muted-foreground">
                               by{' '}
