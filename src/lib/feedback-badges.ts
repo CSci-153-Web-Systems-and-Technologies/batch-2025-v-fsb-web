@@ -15,7 +15,8 @@ const CATEGORY_BADGE_CLASS: Record<string, string> = {
 
 const PRIORITY_BADGE_CLASS: Record<string, string> = {
   low: 'bg-[#1AAE5C] text-white',
-  medium: 'bg-[#FFFF15] text-black',
+  medium: 'bg-[#FFFF5C] text-black',
+  high: 'bg-[#E78C3C] text-white',
   critical: 'bg-[#E74C3C] text-white',
 }
 
