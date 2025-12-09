@@ -18,6 +18,17 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+
+import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
 import { Search, Filter, Play, X, Check, MessageSquare } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient'
 
@@ -32,6 +43,9 @@ type FeedbackRow = {
   status: FeedbackStatus
   is_anonymous: boolean
   created_at: string
+  response_text?: string | null
+  response_visible_public?: boolean | null
+  responded_at?: string | null
   profiles?: {
     display_name?: string | null
     email?: string | null
@@ -70,6 +84,14 @@ export function AdminDashboard({ feedback }: Props) {
   const [priority, setPriority] = useState<string>('all')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
+  // respond dialog state
+  const [responseOpen, setResponseOpen] = useState(false)
+  const [responseTarget, setResponseTarget] = useState<FeedbackRow | null>(null)
+  const [responseText, setResponseText] = useState('')
+  const [responsePublic, setResponsePublic] = useState(true)
+  const [responseSubmitting, setResponseSubmitting] = useState(false)
+  const [responseError, setResponseError] = useState<string | null>(null)
+
   const supabase = createSupabaseBrowserClient()
 
   async function handleUpdateStatus(id: string, status: FeedbackStatus) {
@@ -93,6 +115,106 @@ export function AdminDashboard({ feedback }: Props) {
       setUpdatingId(null)
     }
   }
+
+  // open respond dialog
+  function openRespondDialog(item: FeedbackRow) {
+    setResponseTarget(item)
+    setResponseText(item.response_text ?? '')
+    if (item.is_anonymous) {
+      setResponsePublic(true) // anonymous feedback => always public
+    } else {
+      setResponsePublic(item.response_visible_public ?? false)
+    }
+    setResponseError(null)
+    setResponseOpen(true)
+  }
+
+  // submit response
+  async function handleSubmitResponse(e: React.FormEvent) {
+  e.preventDefault()
+  if (!responseTarget) return
+
+  setResponseSubmitting(true)
+  setResponseError(null)
+
+  const hasEmail =
+    !responseTarget.is_anonymous && !!responseTarget.profiles?.email
+
+  // anonymous -> always public; non-anonymous -> use toggle
+  const isPublic = responseTarget.is_anonymous ? true : responsePublic
+  const now = new Date().toISOString()
+
+  // 1) update feedback row in Supabase
+  const { error } = await supabase
+    .from('feedback')
+    .update({
+      response_text: responseText,
+      response_visible_public: isPublic,
+      responded_at: now,
+    })
+    .eq('id', responseTarget.id)
+
+  if (error) {
+    console.error('Response update error:', error.message, error.details)
+    setResponseSubmitting(false)
+    setResponseError(error.message || 'Could not save response.')
+    return
+  }
+
+  // 2) If we have an email, open the user's email app with a pre-filled draft
+  if (hasEmail && typeof window !== 'undefined') {
+    const to = responseTarget.profiles?.email as string
+    const subject = `Response to your feedback: ${responseTarget.title}`
+
+    const body = `
+Thank you for sending your feedback.
+
+Title:
+${responseTarget.title}
+
+Description:
+${responseTarget.description}
+
+Our response:
+${responseText}
+    `.trim()
+
+    const mailtoUrl =
+      'mailto:' +
+      encodeURIComponent(to) +
+      '?subject=' +
+      encodeURIComponent(subject) +
+      '&body=' +
+      encodeURIComponent(body)
+
+    // Use location instead of window.open so it's less likely to be blocked
+    console.log('mailtoUrl', mailtoUrl)
+
+    window.location.href = mailtoUrl
+  }
+
+  setResponseSubmitting(false)
+
+  // 3) update local state so the UI shows the new response / visibility
+  setRows((prev) =>
+    prev.map((row) =>
+      row.id === responseTarget.id
+        ? {
+            ...row,
+            response_text: responseText,
+            response_visible_public: isPublic,
+            responded_at: now,
+          }
+        : row
+    )
+  )
+
+  setResponseOpen(false)
+  setResponseTarget(null)
+  setResponseText('')
+}
+
+
 
   const counts = useMemo(() => {
     const base = { pending: 0, in_progress: 0, published: 0, rejected: 0 }
@@ -277,7 +399,6 @@ export function AdminDashboard({ feedback }: Props) {
                             {item.title}
                           </h2>
 
-
                           {/* Badges + name + date */}
                           <div className="flex flex-wrap items-center gap-2">
                             <Badge className="bg-emerald-500/90 text-xs font-medium text-white">
@@ -308,11 +429,14 @@ export function AdminDashboard({ feedback }: Props) {
                             variant="outline"
                             size="sm"
                             disabled={updatingId === item.id}
-                            onClick={() => handleUpdateStatus(item.id, 'in_progress')}
+                            onClick={() =>
+                              handleUpdateStatus(item.id, 'in_progress')
+                            }
                             className={`flex items-center gap-1 rounded-xl border text-xs
-                              ${item.status === 'in_progress'
-                                ? 'border-sky-300 bg-sky-50 text-sky-700'
-                                : 'border-slate-200 text-sky-700 hover:bg-sky-50'
+                              ${
+                                item.status === 'in_progress'
+                                  ? 'border-sky-300 bg-sky-50 text-sky-700'
+                                  : 'border-slate-200 text-sky-700 hover:bg-sky-50'
                               }`}
                           >
                             <Play className="h-3 w-3" />
@@ -325,7 +449,9 @@ export function AdminDashboard({ feedback }: Props) {
                             variant="outline"
                             size="sm"
                             disabled={updatingId === item.id}
-                            onClick={() => handleUpdateStatus(item.id, 'rejected')}
+                            onClick={() =>
+                              handleUpdateStatus(item.id, 'rejected')
+                            }
                             className="flex items-center gap-1 rounded-xl border border-slate-200 text-xs text-red-600 hover:bg-red-50"
                           >
                             <X className="h-3 w-3" />
@@ -338,7 +464,9 @@ export function AdminDashboard({ feedback }: Props) {
                             variant="outline"
                             size="sm"
                             disabled={updatingId === item.id}
-                            onClick={() => handleUpdateStatus(item.id, 'published')}
+                            onClick={() =>
+                              handleUpdateStatus(item.id, 'published')
+                            }
                             className="flex items-center gap-1 rounded-xl border border-slate-200 text-xs text-emerald-600 hover:bg-emerald-50"
                           >
                             <Check className="h-3 w-3" />
@@ -351,7 +479,7 @@ export function AdminDashboard({ feedback }: Props) {
                             variant="outline"
                             size="sm"
                             className="flex items-center gap-1 rounded-xl border border-slate-300 text-xs hover:bg-slate-50"
-                            // onClick={() => openRespondDialog(item)}
+                            onClick={() => openRespondDialog(item)}
                           >
                             <MessageSquare className="h-3 w-3" />
                             <span>Respond</span>
@@ -363,6 +491,14 @@ export function AdminDashboard({ feedback }: Props) {
                       <p className="text-sm text-muted-foreground">
                         {item.description}
                       </p>
+
+                      {/* Existing response preview */}
+                      {item.response_text && (
+                        <div className="mt-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                          <span className="font-semibold">Response: </span>
+                          {item.response_text}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))
@@ -371,6 +507,107 @@ export function AdminDashboard({ feedback }: Props) {
           )
         )}
       </Tabs>
+
+      {/* Respond dialog */}
+      <Dialog open={responseOpen} onOpenChange={setResponseOpen}>
+        <DialogContent className="max-w-lg rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">
+              Respond to feedback
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmitResponse} className="space-y-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">
+                {responseTarget?.title}
+              </p>
+
+              {responseTarget && (
+                <div className="text-xs text-muted-foreground space-y-1">
+                  {responseTarget.is_anonymous ? (
+                    <>
+                      <p>
+                        Recipient:{' '}
+                        <span className="font-semibold">
+                          Anonymous (no email)
+                        </span>
+                      </p>
+                      <p>
+                        Your response will be posted{' '}
+                        <span className="font-semibold">publicly</span> in the
+                        feed because there is no email address.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p>
+                        Recipient:{' '}
+                        <span className="font-semibold">
+                          {responseTarget.profiles?.display_name ||
+                            responseTarget.profiles?.email ||
+                            'Unknown'}
+                        </span>
+                      </p>
+                      <p>
+                        Via email:{' '}
+                        <span className="font-mono">
+                          {responseTarget.profiles?.email ?? 'No email saved'}
+                        </span>
+                      </p>
+                      <p>
+                        By default this response will be sent via email only.
+                        You can also choose to make it public in the feed using
+                        the toggle below.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Response</label>
+              <Textarea
+                rows={4}
+                value={responseText}
+                onChange={(e) => setResponseText(e.target.value)}
+                required
+              />
+            </div>
+
+            {!responseTarget?.is_anonymous && (
+              <div className="flex items-center gap-2 pt-1">
+                <Switch
+                  checked={responsePublic}
+                  onCheckedChange={(val: boolean) =>
+                    setResponsePublic(Boolean(val))
+                  }
+                />
+                <span className="text-xs text-muted-foreground">
+                  Make this response visible in the public feed
+                </span>
+              </div>
+            )}
+
+            {responseError && (
+              <p className="text-sm text-red-500">{responseError}</p>
+            )}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setResponseOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={responseSubmitting}>
+                {responseSubmitting ? 'Sending…' : 'Send response'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
