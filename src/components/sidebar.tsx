@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { Home, BarChart3, Settings } from 'lucide-react'
@@ -25,11 +26,7 @@ const SubmitFeedbackDialog = dynamic(
   { ssr: false }
 )
 
-const navItems = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-  { href: '/settings', label: 'Account', icon: Settings },
-]
+type Role = 'admin' | 'user'
 
 function getInitials(name?: string | null) {
   if (!name) return 'U'
@@ -41,15 +38,15 @@ function getInitials(name?: string | null) {
 export function Sidebar() {
   const pathname = usePathname()
   const [displayName, setDisplayName] = useState<string | null>(null)
+  const [email, setEmail] = useState<string | null>(null)
+  const [role, setRole] = useState<Role | null>(null)
+  const [loadingRole, setLoadingRole] = useState(true)
 
-  // NEW: separate states
+  // hover / profile menu for expansion
   const [hovered, setHovered] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-
-  // expanded is derived: if hovering OR profile menu is open
   const expanded = hovered || profileMenuOpen
 
-  // load current user's display name from profiles
   useEffect(() => {
     const supabase = createSupabaseBrowserClient()
 
@@ -57,23 +54,34 @@ export function Sidebar() {
       const {
         data: { user },
       } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        setLoadingRole(false)
+        return
+      }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
-        .select('display_name, email')
+        .select('display_name, email, role')
         .eq('id', user.id)
         .single()
 
-      if (data) {
+      if (!error && data) {
         setDisplayName(
           data.display_name || data.email?.split('@')[0] || 'Account'
         )
+        setEmail(data.email ?? null)
+        setRole((data.role as Role | undefined) ?? 'user')
+      } else {
+        setRole('user')
       }
+
+      setLoadingRole(false)
     }
 
     load()
   }, [])
+
+  const isAdmin = role === 'admin'
 
   return (
     <aside
@@ -87,7 +95,6 @@ export function Sidebar() {
       `}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => {
-        // only collapse when mouse leaves AND profile menu is not open
         setHovered(false)
       }}
     >
@@ -95,53 +102,101 @@ export function Sidebar() {
       <div className="space-y-6 px-2 pt-4">
         {/* Logo / title */}
         <div className="flex items-center gap-2 px-2">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold">
-            V
+          <div className="flex h-8 w-8 items-center justify-center">
+            <Image
+              src="/v-fsb_icon.svg"
+              alt="V-FSB logo"
+              width={28}
+              height={28}
+              priority
+            />
           </div>
           {expanded && (
-            <span className="text-sm font-semibold tracking-tight">
-              V-FSB
-            </span>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold tracking-tight">
+                Viscan
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                Feedback &amp; Suggestion Box
+              </span>
+            </div>
           )}
         </div>
 
         {/* Main nav links */}
-        <nav className="flex flex-col gap-1 mt-4">
-          {navItems.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`
-                  flex items-center gap-3 rounded-md px-2 py-2 text-sm
-                  transition-colors
-                  ${
-                    active
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  }
-                `}
-                title={!expanded ? label : undefined}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                {expanded && <span className="truncate">{label}</span>}
-              </Link>
-            )
-          })}
-        </nav>
+        <nav className="mt-4 flex flex-col gap-1">
+          {/* Home – everyone */}
+          <Link
+            href="/"
+            className={`
+              flex items-center gap-3 rounded-md px-2 py-2 text-sm
+              transition-colors
+              ${
+                pathname === '/'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              }
+            `}
+            title={!expanded ? 'Home' : undefined}
+          >
+            <Home className="h-5 w-5 shrink-0" />
+            {expanded && <span className="truncate">Home</span>}
+          </Link>
 
-        {/* Submit Feedback */}
-        <div className="mt-4 flex flex-col gap-2 px-2">
-          <div className="flex items-center gap-3">
-            <SubmitFeedbackDialog />
-            {expanded && (
-              <span className="text-sm text-muted-foreground">
-                Submit Feedback
-              </span>
-            )}
-          </div>
-        </div>
+          {/* Admin-only: Dashboard (after Home for admins) */}
+          {!loadingRole && isAdmin && (
+            <Link
+              href="/dashboard"
+              className={`
+                flex items-center gap-3 rounded-md px-2 py-2 text-sm
+                transition-colors
+                ${
+                  pathname === '/dashboard'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                }
+              `}
+              title={!expanded ? 'Dashboard' : undefined}
+            >
+              <BarChart3 className="h-5 w-5 shrink-0" />
+              {expanded && <span className="truncate">Dashboard</span>}
+            </Link>
+          )}
+
+          {/* User-only: Submit Feedback – between Home and Account */}
+          {!loadingRole && !isAdmin && (
+            <div
+              className={`
+                flex items-center gap-3 rounded-md px-2 py-2 text-sm
+                text-muted-foreground hover:bg-accent hover:text-accent-foreground
+              `}
+              title={!expanded ? 'Submit Feedback' : undefined}
+            >
+              <SubmitFeedbackDialog />
+              {expanded && (
+                <span className="truncate">Submit Feedback</span>
+              )}
+            </div>
+          )}
+
+          {/* Account – everyone */}
+          <Link
+            href="/settings"
+            className={`
+              flex items-center gap-3 rounded-md px-2 py-2 text-sm
+              transition-colors
+              ${
+                pathname === '/settings'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              }
+            `}
+            title={!expanded ? 'Account' : undefined}
+          >
+            <Settings className="h-5 w-5 shrink-0" />
+            {expanded && <span className="truncate">Account</span>}
+          </Link>
+        </nav>
       </div>
 
       {/* Bottom: profile row with bubble menu */}
@@ -150,13 +205,11 @@ export function Sidebar() {
           open={profileMenuOpen}
           onOpenChange={(open) => {
             setProfileMenuOpen(open)
-            // when opening the profile menu, force sidebar expanded
-            // when closing, let hover state decide (expanded = hovered || profileMenuOpen)
           }}
         >
           <DropdownMenuTrigger asChild>
             <button
-            suppressHydrationWarning
+              suppressHydrationWarning
               className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               title={!expanded ? 'Account' : undefined}
             >
@@ -166,12 +219,12 @@ export function Sidebar() {
                 </AvatarFallback>
               </Avatar>
               {expanded && (
-                <div className="flex flex-col text-left">
-                  <span className="text-sm font-medium truncate">
+                <div className="flex flex-col text-left min-w-0">
+                  <span className="truncate text-sm font-medium">
                     {displayName ?? 'Account'}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    Account menu
+                  <span className="truncate text-xs text-muted-foreground">
+                    {email ?? 'Account menu'}
                   </span>
                 </div>
               )}
@@ -191,13 +244,19 @@ export function Sidebar() {
                   {getInitials(displayName)}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium truncate">
-                {displayName ?? 'Account'}
-              </span>
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate text-sm font-medium">
+                  {displayName ?? 'Account'}
+                </span>
+                {email && (
+                  <span className="truncate text-xs text-muted-foreground">
+                    {email}
+                  </span>
+                )}
+              </div>
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              {/* reuse existing logout button inside the menu */}
               <LogoutButton />
             </DropdownMenuItem>
           </DropdownMenuContent>
