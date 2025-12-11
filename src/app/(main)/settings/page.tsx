@@ -108,11 +108,11 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Account settings</h1>
+      <h1 className="text-2xl font-semibold">Account Settings</h1>
 
       {/* Profile card */}
-      <Card className="rounded-3xl">
-        <CardContent className="space-y-4 py-6">
+      <Card className="rounded-3xl max-w-md">
+        <CardContent className="space-y-4 ">
           <h2 className="text-base font-semibold">Profile</h2>
 
           <form onSubmit={handleSaveProfile} className="space-y-4 max-w-md">
@@ -139,7 +139,7 @@ export default function SettingsPage() {
 
       {/* Password card */}
       <Card className="rounded-3xl max-w-md">
-        <CardContent className="space-y-4 py-6">
+        <CardContent className="space-y-4 ">
           <h2 className="text-base font-semibold">Password</h2>
 
           <form onSubmit={handleChangePassword} className="space-y-4">

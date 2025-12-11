@@ -15,8 +15,6 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { ThumbsUp, ThumbsDown, MessageCircle } from 'lucide-react'
-import { categoryBadgeClass, priorityBadgeClass } from '@/lib/feedback-badges'
-
 
 export type PublicFeedbackRow = {
   id: string
@@ -45,6 +43,8 @@ type CommentRow = {
   id: string
   content: string
   created_at: string
+  author_name?: string | null
+  author_role?: 'admin' | 'user' | null
 }
 
 type Props = {
@@ -65,6 +65,8 @@ export function PublicFeed({ initialFeedback }: Props) {
 
   const [feedback] = useState(initialFeedback)
   const [userId, setUserId] = useState<string | null>(null)
+  const [userDisplayName, setUserDisplayName] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<'admin' | 'user' | null>(null)
 
   const [reactions, setReactions] = useState<Record<string, ReactionState>>({})
   const [commentsByFeedback, setCommentsByFeedback] = useState<
@@ -78,7 +80,7 @@ export function PublicFeed({ initialFeedback }: Props) {
   const [submittingComment, setSubmittingComment] = useState(false)
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
 
-  // Load current user + reaction counts
+  // Load current user (id + profile) + reaction counts
   useEffect(() => {
     const load = async () => {
       const {
@@ -87,6 +89,20 @@ export function PublicFeed({ initialFeedback }: Props) {
 
       if (!user) return
       setUserId(user.id)
+
+      // load profile for name + role
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name, email, role')
+        .eq('id', user.id)
+        .single()
+
+      if (profile) {
+        setUserDisplayName(
+          profile.display_name || profile.email?.split('@')[0] || 'You'
+        )
+        setUserRole((profile.role as 'admin' | 'user' | null) ?? 'user')
+      }
 
       if (!feedback.length) return
 
@@ -146,9 +162,7 @@ export function PublicFeed({ initialFeedback }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feedback.length])
 
-  // Load comment counts for each feedback item using a grouped/count RPC for efficiency.
-  // Expects a Postgres function `feedback_comment_counts(feedback_ids uuid[])` that
-  // returns rows: { feedback_id uuid, count bigint }
+  // Load comment counts (RPC + fallback)
   useEffect(() => {
     const loadCounts = async () => {
       if (!feedback.length) return
@@ -162,8 +176,10 @@ export function PublicFeed({ initialFeedback }: Props) {
         )
 
         if (rpcError || !rpcData) {
-          // If RPC missing or failed, fallback to client-side grouped fetch
-          console.warn('RPC feedback_comment_counts unavailable, falling back', rpcError?.message)
+          console.warn(
+            'RPC feedback_comment_counts unavailable, falling back',
+            rpcError?.message
+          )
 
           const { data: rows, error } = await supabase
             .from('feedback_comments')
@@ -219,7 +235,8 @@ export function PublicFeed({ initialFeedback }: Props) {
     if (!userId) return
 
     const current =
-      reactions[feedbackId] || ({
+      reactions[feedbackId] ||
+      ({
         likes: 0,
         dislikes: 0,
         userReaction: null,
@@ -284,7 +301,9 @@ export function PublicFeed({ initialFeedback }: Props) {
     setLoadingCommentsFor(item.id)
     const { data, error } = await supabase
       .from('feedback_comments')
-      .select('id, content, created_at')
+      .select(
+        'id, content, created_at, profiles(display_name, email, role)'
+      )
       .eq('feedback_id', item.id)
       .order('created_at', { ascending: true })
 
@@ -294,11 +313,31 @@ export function PublicFeed({ initialFeedback }: Props) {
         error.message,
         (error as any).details
       )
+      setLoadingCommentsFor(null)
+      return
     }
+
+    const mapped: CommentRow[] = (data ?? []).map((row: any) => {
+      const profile = row.profiles
+      const name =
+        profile?.display_name ||
+        profile?.email?.split?.('@')[0] ||
+        'Unknown user'
+      const role =
+        (profile?.role as 'admin' | 'user' | null | undefined) ?? null
+
+      return {
+        id: row.id,
+        content: row.content,
+        created_at: row.created_at,
+        author_name: name,
+        author_role: role,
+      }
+    })
 
     setCommentsByFeedback((prev) => ({
       ...prev,
-      [item.id]: (data ?? []) as CommentRow[],
+      [item.id]: mapped,
     }))
     setLoadingCommentsFor(null)
   }
@@ -330,7 +369,13 @@ export function PublicFeed({ initialFeedback }: Props) {
       return
     }
 
-    const newComment = data as CommentRow
+    const newComment: CommentRow = {
+      id: data.id,
+      content: data.content,
+      created_at: data.created_at,
+      author_name: userDisplayName ?? 'You',
+      author_role: userRole ?? undefined,
+    }
 
     setCommentsByFeedback((prev) => ({
       ...prev,
@@ -371,15 +416,10 @@ export function PublicFeed({ initialFeedback }: Props) {
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold">{item.title}</p>
-                    <Badge
-                        className={
-                            'rounded-full px-3 py-1 text-[11px] font-medium ' +
-                            categoryBadgeClass(item.category)
-                        }
-                        >
-                        {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+                    <Badge className="rounded-full bg-[#F35A4A] px-3 py-1 text-[11px] font-medium text-white">
+                      {item.category.charAt(0).toUpperCase() +
+                        item.category.slice(1)}
                     </Badge>
-
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-muted-foreground">
@@ -404,7 +444,7 @@ export function PublicFeed({ initialFeedback }: Props) {
                     <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                       Admin response
                       {item.responded_at && (
-                        <span className="ml-1 font-normal text-[10px]">
+                        <span className="ml-1 text-[10px] font-normal">
                           · {formatDate(item.responded_at)}
                         </span>
                       )}
@@ -419,10 +459,10 @@ export function PublicFeed({ initialFeedback }: Props) {
                   <button
                     type="button"
                     onClick={() => handleReaction(item.id, 'like')}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-1 text-sm font-medium transition-all duration-150 shadow-sm ${
+                    className={`flex items-center gap-2 rounded-lg px-3 py-1 text-sm font-medium shadow-sm transition-all duration-150 ${
                       likeActive
-                        ? 'bg-emerald-500 text-white border border-emerald-500 hover:bg-emerald-600'
-                        : 'bg-white text-emerald-700 border border-neutral-200 hover:bg-emerald-50'
+                        ? 'border border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600'
+                        : 'border border-neutral-200 bg-white text-emerald-700 hover:bg-emerald-50'
                     }`}
                     aria-pressed={likeActive}
                     aria-label={likeActive ? 'Unlike' : 'Like'}
@@ -437,10 +477,10 @@ export function PublicFeed({ initialFeedback }: Props) {
                   <button
                     type="button"
                     onClick={() => handleReaction(item.id, 'dislike')}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-1 text-sm font-medium transition-all duration-150 shadow-sm ${
+                    className={`flex items-center gap-2 rounded-lg px-3 py-1 text-sm font-medium shadow-sm transition-all duration-150 ${
                       dislikeActive
-                        ? 'bg-red-500 text-white border border-red-500 hover:bg-red-600'
-                        : 'bg-white text-red-700 border border-neutral-200 hover:bg-red-50'
+                        ? 'border border-red-500 bg-red-500 text-white hover:bg-red-600'
+                        : 'border border-neutral-200 bg-white text-red-700 hover:bg-red-50'
                     }`}
                     aria-pressed={dislikeActive}
                     aria-label={dislikeActive ? 'Remove dislike' : 'Dislike'}
@@ -467,7 +507,9 @@ export function PublicFeed({ initialFeedback }: Props) {
                       className="text-xs text-muted-foreground"
                     >
                       {(commentCounts[item.id] || 0) > 0
-                        ? `${commentCounts[item.id]} comment${commentCounts[item.id] === 1 ? '' : 's'}`
+                        ? `${commentCounts[item.id]} comment${
+                            commentCounts[item.id] === 1 ? '' : 's'
+                          }`
                         : '0 comments'}
                     </button>
                   </div>
@@ -501,7 +543,7 @@ export function PublicFeed({ initialFeedback }: Props) {
           {commentFor && (
             <div className="space-y-3">
               <div className="rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                <p className="text-[11px] font-semibold mb-1">
+                <p className="mb-1 text-[11px] font-semibold">
                   {commentFor.title}
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -518,8 +560,21 @@ export function PublicFeed({ initialFeedback }: Props) {
                   </p>
                 ) : (
                   (commentsByFeedback[commentFor.id] ?? []).map((c) => (
-                    <div key={c.id} className="space-y-0.5">
-                      <p>{c.content}</p>
+                    <div
+                      key={c.id}
+                      className="space-y-0.5 rounded-md bg-slate-50 px-2 py-1.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-medium">
+                          {c.author_name ?? 'Unknown user'}
+                        </span>
+                        {c.author_role === 'admin' && (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                            Admin
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs">{c.content}</p>
                       <p className="text-[10px] text-muted-foreground">
                         {formatDate(c.created_at)}
                       </p>
@@ -536,17 +591,7 @@ export function PublicFeed({ initialFeedback }: Props) {
                   placeholder="Write a comment…"
                 />
                 <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setCommentFor(null)
-                      setCommentText('')
-                    }}
-                  >
-                    Close
-                  </Button>
-                  <Button type="submit" disabled={submittingComment}>
+                  <Button type="submit" size="sm" disabled={submittingComment}>
                     {submittingComment ? 'Posting…' : 'Post comment'}
                   </Button>
                 </DialogFooter>

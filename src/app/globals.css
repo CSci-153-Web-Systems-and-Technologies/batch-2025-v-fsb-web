@@ -120,3 +120,22 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+/* Make everything slightly bigger */
+:root {
+  font-size: 18px; /* default is usually 16px, bump this to 17 or 18 if needed */
+}
+
+/* On larger screens, bump a bit more */
+@media (min-width: 768px) {
+  :root {
+    font-size: 18px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    font-size: 18px;
+  }
+}
