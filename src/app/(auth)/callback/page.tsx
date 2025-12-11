@@ -1,16 +1,19 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient'
 
 export default function AuthCallbackPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const supabase = createSupabaseBrowserClient()
 
   useEffect(() => {
-    const code = searchParams.get('code')
+    // use URLSearchParams from window.location to avoid CSR bailout during
+    // Next.js prerender. This keeps the component client-only without
+    // relying on `useSearchParams` which can trigger a CSR bailout.
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
 
     if (!code) {
       router.replace('/login')
@@ -28,7 +31,8 @@ export default function AuthCallbackPage() {
     }
 
     exchange()
-  }, [searchParams, router, supabase])
+  // router and supabase are stable in this usage; omit search params from deps
+  }, [router, supabase])
 
   return (
     <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">

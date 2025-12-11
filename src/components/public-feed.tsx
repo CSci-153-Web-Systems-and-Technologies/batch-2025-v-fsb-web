@@ -5,6 +5,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabaseClient'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { categoryBadgeClass } from '@/lib/feedback-badges'
 import {
   Dialog,
   DialogContent,
@@ -416,7 +417,11 @@ export function PublicFeed({ initialFeedback }: Props) {
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold">{item.title}</p>
-                    <Badge className="rounded-full bg-[#F35A4A] px-3 py-1 text-[11px] font-medium text-white">
+                    <Badge
+                      className={`rounded-full px-3 py-1 text-[11px] font-medium ${categoryBadgeClass(
+                        item.category
+                      )}`}
+                    >
                       {item.category.charAt(0).toUpperCase() +
                         item.category.slice(1)}
                     </Badge>
