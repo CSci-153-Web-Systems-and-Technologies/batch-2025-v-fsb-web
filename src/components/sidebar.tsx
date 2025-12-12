@@ -232,7 +232,7 @@ export function Sidebar() {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent
-            side="right"
+            side="top"
             align="end"
             sideOffset={8}
             className="w-52 rounded-2xl"
